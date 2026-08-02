@@ -528,9 +528,29 @@
   }
   #cam.mini,
   #cam.auto-mini{height:56px;min-height:56px;}
-  #app.kb #cam{height:56px;min-height:56px;}
-  #app.kb #chat{min-height:132px;}
-  #app.kb #camwrap{margin:6px 9px 0;}
+
+  /* ── TECLADO ABIERTO ──
+     Cada píxel cuenta. La cabecera de la cámara pierde el texto y se queda
+     en una línea; la imagen se reduce al mínimo y el resto es conversación. */
+  #app.kb #cam{height:40px;min-height:40px;}
+  #app.kb #camwrap{margin:4px 8px 0;}
+  #app.kb .panel-head{padding:0;height:5px;overflow:hidden;}
+  #app.kb .panel-head > *{display:none;}
+  #app.kb #camwrap .hatch{display:none;}
+  #app.kb #camwrap{padding-bottom:0;}
+  #app.kb #camwrap::after{height:4px;}
+  #app.kb #chat{min-height:150px;padding-top:8px;}
+  #app.kb #hud{padding:4px 11px;}
+  #app.kb .clock{font-size:20px;}
+  #app.kb .chip{font-size:9px;padding:2px 5px;}
+
+  /* Sin salto al abrir o cerrar el teclado: todo lo que cambia de tamaño
+     se mueve con la misma curva y duración. */
+  #camwrap,#cam,#chat,#composer,#hud{
+    transition:height .18s ease-out, min-height .18s ease-out,
+               margin .18s ease-out, padding .18s ease-out;
+  }
+  #app{transition:none;}
   #cam img{width:100%;height:100%;object-fit:cover;display:block;}
   #cam.glitch img{animation:glitch .4s steps(2) 1;}
   @keyframes glitch{
@@ -1328,25 +1348,31 @@ E.cerrarBuffer = function(st){
       grupos.push({who:m.who, kind:m.kind, text:m.text, delay:m.delay, extra:m.extra});
     }
   });
-  grupos.forEach(function(g){ E._emit(st, g.who, g.text, g.kind, g.delay); });
+  grupos.forEach(function(g){ E._emit(st, g.who, g.text, g.kind, g.delay, g.extra); });
   if(pend) E._emit(st, 'vega', pend, '', 1200);
 };
 
-E._emit = function(st, who, text, kind, delay){
-  if(who === 'vega' && st && st.lastSaid === text){
+E._emit = function(st, who, text, kind, delay, extra){
+  if(st) st._dijoAlgo = true;
+  // Repetición = decir literalmente lo mismo que en el turno anterior.
+  // No se compara con todo lo dicho en la partida.
+  const seguido = st && (st.turns - (st.lastSaidTurn || -99) <= 1);
+  const repetido = seguido && st.lastSaid === text;
+  if(who === 'vega' && st && repetido && !extra){
     text = U.pick([
       'Lo mismo que te acabo de decir, Control.',
       'Ya te lo he dicho. Nada nuevo.',
       'Sin cambios respecto a lo de antes.'
     ]);
   }
-  if(who === 'vega' && st) st.lastSaid = text;
+  if(who === 'vega' && st){ st.lastSaid = text; st.lastSaidTurn = st.turns; }
   LC.ui.line(who, text, kind, delay);
 };
 
 E._src = null;   // objeto que está produciendo la respuesta
 
 function salida(who, text, kind, delay, extra){
+  if(E._st) E._st._dijoAlgo = true;
   if(E._buf){
     if(!extra){
       // ni el mismo texto ni el mismo objeto dos veces en la misma orden
@@ -1359,12 +1385,14 @@ function salida(who, text, kind, delay, extra){
     E._buf.push({who:who, text:text, kind:kind||'', delay:delay, src:E._src, extra:extra});
     return;
   }
-  E._emit(E._st, who, text, kind, delay);
+  E._emit(E._st, who, text, kind, delay, extra);
 }
 
 E._st = null;   // estado en curso, para el control de repeticiones
 
 E.say    = function(text, kind){ salida('vega', text, kind); };
+/* Respuesta directa a una pregunta: nunca se filtra por repetición */
+E.responder = function(text){ salida('vega', text, '', undefined, true); };
 E.deny   = function(text){ salida('vega', text, ''); };          // negarse no es alarmarse
 E.sys    = function(text){ salida('sys', text); };
 E.hito   = function(text){ salida('vega', text, 'hito'); };      // avance del puzzle
@@ -1383,6 +1411,8 @@ E.extra  = function(text, kind, delay){ salida('vega', text, kind, delay, true);
    y se queda esperando. El jugador puede decir que sí, que no, o nombrar
    uno de los objetos. Es lo que convierte el informe en conversación. */
 E.ofrecer = function(st, keys, texto){
+  // Si ya hay un ofrecimiento vivo de esta misma orden, no se pisa
+  if(st.oferta && st.oferta.turno === st.turns) return;
   st.oferta = { keys: keys.slice(), turno: st.turns };
   // se emite al cerrar el búfer: primero Vega termina de contar, después pregunta
   if(E._buf) E._ofertaPend = texto;
@@ -1444,7 +1474,9 @@ E.resolverOferta = function(st, t, n){
     return true;
   }
 
-  st.oferta = null;   // hablaba de otra cosa
+  // Si la oferta acaba de nacer en esta misma orden, no se descarta:
+  // el jugador todavía no ha tenido ocasión de responder.
+  if(of.turno !== st.turns) st.oferta = null;
   return false;
 };
 
@@ -1501,6 +1533,8 @@ E.approach = function(st, key){
   st.seen[key] = n + 1;
   st.examined[key] = true;
   E.say(LC.room.approachText(ent) + ' ' + LC.room.look(st, ent, n));
+  // Si es un aparato que pide datos, ponerse delante deja el campo listo
+  if(ent.pideDato && LC.room.prepararDato) LC.room.prepararDato(st, key);
 };
 
 E.runAct = function(st, key, n){
@@ -1575,12 +1609,16 @@ E.disengage = function(st){
 
 E.handleCommand = function(st, raw){
   const t0 = String(raw).trim();
-  if(!t0) return;
+  if(!t0){
+    LC.ui.line('vega', U.pick(['¿Control? No te oigo.','No me ha llegado nada.']), '');
+    return;
+  }
   LC.ui.line('control', t0);
   if(st.finished) return;
 
   E._st = st;
   st.turns++;
+  st._dijoAlgo = false;
 
   // Credenciales dictadas dentro de la frase
   if(LC.room.dictateCredentials){
@@ -1596,12 +1634,16 @@ E.handleCommand = function(st, raw){
     E.abrirBuffer();
     E.handleOne(st, t0, false);
     E.cerrarBuffer(st);
+    if(!st._dijoAlgo && !st.finished){
+      E._emit(st, 'vega', U.pick(LC.room.texts.noEntiendo), '', undefined, true);
+    }
     LC.ui.refresh();
     return;
   }
 
   const parts = E.splitOrders(t0);
   st.justDisengaged = false;
+  st._verboOrden = U.has(U.normalize(t0), E.ACT);
   E.abrirBuffer();
   for(let i=0;i<parts.length;i++){
     if(st.finished) break;
@@ -1610,6 +1652,13 @@ E.handleCommand = function(st, raw){
     if(st.justDisengaged) break;
   }
   E.cerrarBuffer(st);
+  st._verboOrden = false;
+
+  // Vega nunca se queda muda: si ningún camino produjo respuesta, contesta igual
+  if(!st._dijoAlgo && !st.finished){
+    st.unknown.push(t0);
+    E._emit(st, 'vega', U.pick(LC.room.texts.noEntiendo), '', undefined, true);
+  }
 
   LC.ui.refresh();
   const huboAmbiente = LC.room.ambient ? LC.room.ambient(st) : false;
@@ -1688,6 +1737,8 @@ E.handleOne = function(st, t, isPart){
 E.processOrder = function(st, t, n){
   const room = LC.room;
   E._src = null;
+  // "coge la llave y el papel": el segundo trozo hereda el verbo del primero
+  const tieneVerboFuera = !!st._verboOrden;
 
   // Desenganchar. "deja las cajas" sigue siendo soltar; "para el contador" no,
   // porque ese objeto tiene un verbo propio para esa palabra.
@@ -1815,6 +1866,13 @@ E.processOrder = function(st, t, n){
     if(isMove){ E.approach(st, entity); return; }
     if(isLook){ E.lookAt(st, entity); return; }
 
+    // En una orden compuesta con verbo, actuar es lo esperado: no se pregunta
+    if(tieneVerboFuera && !U.has(n, E.ACT) && !U.has(n, E.LOOK) && !U.has(n, E.MOVE)){
+      st.proposal = null;
+      E.runAct(st, entity, n);
+      st.examined[entity] = true;
+      return;
+    }
     st.focus = entity;
     st.proposal = room.entities[entity].ask ? entity : null;
     E.say(room.quePregunta(entity));
@@ -3036,7 +3094,43 @@ room.freeActions = [
   { words:['te llame la atencion','llama la atencion','algo raro','algo extrano','algo extraño',
            'no te encaje','no encaja','no cuadra','fuera de sitio','fuera de lugar','algo sospechoso',
            'algo interesante','algo llamativo','te choca','te chirria','algo que no'],
-    run:function(st){
+    run:function(st, n){
+      // Si estamos delante de algo, la pregunta es sobre ESO
+      const foco = st.focus;
+      const deObjeto = {
+        estanterias: function(st){
+          if(!st.shelfTopSeen && !st.examined.cajas)
+            return 'Que en una balda han sacado cosas de golpe. El resto está corrido hacia un lado.';
+          return 'El hueco entre las cajas. El polvo marca el rectángulo de una que ya no está.';
+        },
+        cajas: function(){ return 'El polvo: asentado por igual en todas salvo en un hueco.'; },
+        escritorio: function(st){
+          if(!st.drawerOpen) return 'Que el cajón tiene cerradura y aquí ya no debería quedar nada que cerrar.';
+          if(!st.examined.taza) return 'La taza de café a medias. En un sitio cerrado hace años.';
+          return 'El teclado: las letras más usadas están medio borradas. Esto se usó mucho.';
+        },
+        ordenador: function(st){
+          return st.loggedIn
+            ? 'Ese acceso de hoy en el registro de sesiones. Once minutos antes de que yo entrara.'
+            : 'Que esté encendido. Nueve años cerrado y la pantalla sigue viva.';
+        },
+        puerta: function(){ return 'Que se sellara sola en cuanto entré. Eso no fue el azar.'; },
+        plano: function(){ return 'Esa frase escrita a mano en la esquina. No venía de fábrica.'; },
+        libro_suelo: function(){ return 'La hoja arrancada. De un tirón, no cortada.'; },
+        alarma: function(){ return 'Que se encendiera sola. Y que no encuentre el cuadro que la manda.'; },
+        contador: function(){ return 'Que empezara a contar en cuanto puse un pie dentro.'; },
+        ventilacion: function(){ return 'Nada. Es una rejilla y punto.'; },
+        silla: function(st){
+          return st.chairLifted ? 'Ya nada. Lo que tenía debajo lo llevo encima.'
+                                : 'Que esté volcada. Nadie tira una silla al salir tranquilo.';
+        }
+      };
+      if(foco && deObjeto[foco]){ E.say(deObjeto[foco](st)); return; }
+      if(foco && room.entities[foco]){
+        E.say('En ' + room.entities[foco].label + ' no veo nada que chirríe, Control.');
+        return;
+      }
+
       const c = [];
       if(!st.chairLifted) c.push('esa silla volcada en mitad de la sala; no se cayó sola');
       if(!st.bookRead) c.push('un libro tirado en el suelo, con las tapas abiertas');
@@ -3094,7 +3188,7 @@ room.freeActions = [
    se queda callada un par de segundos, y entonces cuenta qué ha visto. */
 const AMBIENTE = [
 
-  { turno:9, fn:function(st){
+  { turno:14, fn:function(st){
       E.tension(st, [
         {v:'Control.',                          d:1400},
         {v:'Espera.',                           d:2600},
@@ -3109,7 +3203,7 @@ const AMBIENTE = [
     }
   },
 
-  { turno:20, fn:function(st){
+  { turno:34, fn:function(st){
       E.tension(st, [
         {v:'Chsst.',                            d:1200},
         {v:'Calla un segundo.',                 d:2800},
@@ -3122,7 +3216,7 @@ const AMBIENTE = [
     }
   },
 
-  { turno:32, fn:function(st){
+  { turno:999, fn:function(st){
       st.luzParpadeo = true;
       E.tension(st, [
         {v:'Control.',                          d:1300},
@@ -3139,7 +3233,7 @@ const AMBIENTE = [
     }
   },
 
-  { turno:45, fn:function(st){
+  { turno:999, fn:function(st){
       E.tension(st, [
         {v:'No te muevas.',                     d:1200},
         {v:'Silencio.',                         d:2200},
@@ -3153,7 +3247,7 @@ const AMBIENTE = [
     }
   },
 
-  { turno:58, fn:function(st){
+  { turno:999, fn:function(st){
       E.tension(st, [
         {v:'Espera.',                           d:1400},
         {v:'Hay algo detrás de mí.',            d:3200},
@@ -3170,7 +3264,7 @@ const AMBIENTE = [
 
 /* Separación mínima real entre dos momentos de tensión.
    Si se acumulan, dejan de asustar y cansan. */
-const HUECO_TENSION = 8;
+const HUECO_TENSION = 16;
 
 room.ambient = function(st){
   if(st.awaiting || st.finished) return false;
@@ -3196,9 +3290,9 @@ room.ambient = function(st){
    Sin esto, "¿ha vuelto?" no significaba nada. */
 room.seguimiento = function(st, n){
   if(!st.followUp) return false;
-  if(st.turns - (st.followUpTurno || 0) > 6){ st.followUp = null; return false; }
+  if(st.turns - (st.followUpTurno || 0) > 12){ st.followUp = null; return false; }
   if(!st.followUp.clave.test(n)) return false;
-  E.say(st.followUp.resp);
+  E.responder(st.followUp.resp);
   return true;
 };
 
@@ -3215,7 +3309,45 @@ room.preguntaSala = function(st, n){
    "usuario", "el código", "la contraseña" a secas son preguntas por un dato. */
 /* "escribe el usuario", "mete la contraseña": el jugador pide teclear en el
    ordenador, aunque Vega no tenga el dato. Va antes que el post-it. */
+/* Ponerse delante de un aparato deja el campo esperando: el jugador puede
+   dictar el dato directamente sin una orden intermedia. */
+room.prepararDato = function(st, key){
+  if(st.awaiting) return;
+  if(key === 'ordenador' && !st.loggedIn && st.userKnown){
+    st.awaiting = st.userOk ? 'password' : 'usuario';
+  } else if(key === 'archivo' && st.loggedIn && !st.fileUnlocked){
+    st.awaiting = 'secretWord';
+  } else if(key === 'puerta' && st.fileUnlocked && !st.doorOpen){
+    st.awaiting = 'doorCode';
+  }
+};
+
 room.pedirTeclear = function(st, n){
+  // "yo sé la contraseña", "conozco el usuario", "tengo el código"
+  if(/\b(se|s[eé]|conozco|tengo|recuerdo|sabemos|conocemos)\b/.test(n) &&
+     /usuario|contrasena|contraseña|clave|codigo|código|palabra|pass/.test(n) &&
+     !/no\s+(lo|la|s[eé]|conozco|tengo)/.test(n)){
+    if(/palabra/.test(n)){
+      if(st.fileUnlocked){ E.say('El informe ya está abierto, Control.'); return true; }
+      if(!st.loggedIn){ E.deny('Primero hay que entrar en el sistema, Control.'); return true; }
+      st.awaiting = 'secretWord';
+      E.say('Perfecto. Estoy en el archivo. Dímela y la escribo.');
+      return true;
+    }
+    if(/codigo|código/.test(n)){
+      if(st.doorOpen){ E.say('La puerta ya está abierta.'); return true; }
+      st.awaiting = 'doorCode';
+      E.say('Bien. Estoy en el teclado de la puerta. Dímelo.');
+      return true;
+    }
+    if(st.loggedIn){ E.say('Ya estoy dentro del sistema, Control.'); return true; }
+    st.awaiting = (/contrasena|contraseña|clave|pass/.test(n) && st.userOk) ? 'password' : 'usuario';
+    E.say(st.awaiting === 'password'
+      ? 'Pues dímela y la tecleo. Estoy en el campo de contraseña.'
+      : 'Pues dímelo y lo tecleo. Estoy en el campo de usuario.');
+    return true;
+  }
+
   if(!/escrib|teclea|mete|introduce|pon\b|dicta|prueba/.test(n)) return false;
   const quiere = /usuario|user|login/.test(n) ? 'usuario'
                : (/contrasena|contraseña|clave|pass/.test(n) ? 'password'
@@ -3775,6 +3907,14 @@ function show(id){
   }
 }
 
+/* Un cambio de tamaño del viewport no debe reproducir la animación de
+   entrada: eso es lo que se veía como un "salto" al abrir el teclado. */
+function fijarRevelados(id){
+  const scr = document.getElementById(id);
+  if(!scr) return;
+  scr.querySelectorAll('.rev').forEach(function(el){ el.classList.add('on'); });
+}
+
 /* ---------- carga: accediendo al sistema (6 s) ---------- */
 const PASOS_BOOT = [
   [0,   'Estableciendo enlace…'],
@@ -4001,16 +4141,25 @@ function enviar(){
 
 let altoSinTeclado = 0;
 
+let ultimoAlto = -1, ultimoOff = -1, ultimoKb = null;
+
 function fitViewport(){
   const vv  = window.visualViewport;
   const app = document.getElementById('app');
   if(!app) return;
 
-  const h   = (vv && vv.height)    || window.innerHeight;
-  const off = (vv && vv.offsetTop) || 0;
+  const h   = Math.round((vv && vv.height)    || window.innerHeight);
+  const off = Math.round((vv && vv.offsetTop) || 0);
 
   // La mayor altura vista es la de la pantalla sin teclado
   if(h > altoSinTeclado) altoSinTeclado = h;
+
+  // Nada que hacer si no ha cambiado: evita reflows y parpadeos
+  if(h === ultimoAlto && off === ultimoOff){
+    if(window.scrollY !== 0) window.scrollTo(0,0);
+    return;
+  }
+  ultimoAlto = h; ultimoOff = off;
 
   app.style.height = h + 'px';
   app.style.top    = off + 'px';
@@ -4018,10 +4167,14 @@ function fitViewport(){
 
   // Teclado abierto: el viewport visual pierde más del 20%
   const tecladoAbierto = altoSinTeclado > 0 && h < altoSinTeclado * 0.8;
-  app.classList.toggle('kb', tecladoAbierto);
-  if(elCam) elCam.classList.toggle('auto-mini', tecladoAbierto);
+  if(tecladoAbierto !== ultimoKb){
+    ultimoKb = tecladoAbierto;
+    app.classList.toggle('kb', tecladoAbierto);
+    if(elCam) elCam.classList.toggle('auto-mini', tecladoAbierto);
+    // al cambiar el reparto, lo revelado se queda revelado
+    fijarRevelados('scr-game');
+  }
 
-  // Si Safari ha desplazado el documento a pesar de todo, se deshace
   if(window.scrollY !== 0 || window.pageYOffset !== 0) window.scrollTo(0,0);
 
   pintarDiag(h, off, tecladoAbierto);
@@ -4068,13 +4221,16 @@ ui.boot = function(){
     setTimeout(fitViewport, 300);
   });
   // Safari tarda en dar la altura definitiva al abrir el teclado
+  // Al enfocar, iOS tarda en dar la altura definitiva. Se comprueba varias
+  // veces, pero fitViewport ignora las que no traen cambio real.
   elInput.addEventListener('focus', function(){
-    [60,180,340,600].forEach(function(ms){
+    fijarRevelados('scr-game');
+    [80,220,420,700].forEach(function(ms){
       setTimeout(function(){ fitViewport(); autoscroll(); }, ms);
     });
   });
   elInput.addEventListener('blur', function(){
-    [60,240,500].forEach(function(ms){ setTimeout(fitViewport, ms); });
+    [80,300,600].forEach(function(ms){ setTimeout(fitViewport, ms); });
   });
 
   elChat.addEventListener('scroll', function(){
