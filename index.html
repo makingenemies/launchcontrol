@@ -209,8 +209,8 @@
   }
   .pt-tit{
     font-family:'Poppins','Share Tech Mono',sans-serif;font-weight:700;
-    font-size:clamp(46px,14vw,102px);line-height:.84;letter-spacing:-2px;
-    margin:0;color:var(--text);max-width:100%;
+    font-size:clamp(52px,16vw,100px);line-height:.84;letter-spacing:-3px;
+    margin:0;color:var(--text);max-width:100%;overflow-wrap:break-word;
   }
   .pt-tit.hueca{
     color:transparent;
@@ -551,20 +551,26 @@
     height:26vh;max-height:210px;min-height:92px;
     transition:height .22s;
   }
-  #cam.mini,
-  #cam.auto-mini{height:56px;min-height:56px;}
+  #cam.mini{height:56px;min-height:56px;}
 
   /* ── TECLADO ABIERTO ──
-     Cada píxel cuenta. La cabecera de la cámara pierde el texto y se queda
-     en una línea; la imagen se reduce al mínimo y el resto es conversación. */
-  #app.kb #cam{height:40px;min-height:40px;}
-  #app.kb #camwrap{margin:4px 8px 0;}
-  #app.kb .panel-head{padding:0;height:5px;overflow:hidden;}
-  #app.kb .panel-head > *{display:none;}
-  #app.kb #camwrap .hatch{display:none;}
-  #app.kb #camwrap{padding-bottom:0;}
-  #app.kb #camwrap::after{height:4px;}
-  #app.kb #chat{min-height:150px;padding-top:8px;}
+     La cámara ya no se encoge para hacer sitio: se quita del todo y deja
+     un desplegable en su lugar. Si hace falta mirarla, se abre a demanda
+     como panel flotante sobre la conversación; no compite por altura
+     mientras se escribe. */
+  #cam-toggle{
+    display:none;flex:0 0 auto;width:calc(100% - 16px);margin:5px 8px 0;
+    background:var(--panel);border:1px solid var(--green-dim);color:var(--green-dim);
+    font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;
+    padding:6px;text-align:center;
+  }
+  #app.kb #cam-toggle{display:block;}
+  #app.kb #camwrap{display:none;margin:0;}
+  #app.kb #camwrap.abierta{
+    display:flex;position:absolute;left:8px;right:8px;top:78px;z-index:35;
+    box-shadow:0 10px 28px rgba(0,0,0,.7), 0 0 0 1px rgba(255,77,94,.12);
+  }
+  #app.kb #camwrap.abierta #cam{height:32vh;max-height:220px;min-height:120px;}
   #app.kb #hud{padding:4px 11px;}
   #app.kb .clock{font-size:20px;}
   #app.kb .chip{font-size:9px;padding:2px 5px;}
@@ -612,8 +618,8 @@
   .msg.hito{border-left:2px solid var(--green-hi);padding-left:9px;}
   .msg .txt .hl{color:var(--green-hi);}
   /* La alarma ya no se pinta de rojo (redundaba con el propio susto):
-     se distingue por una anotación en cursiva, no por el color. */
-  .msg .txt i{font-style:italic;}
+     se distingue por esta anotación en cursiva, no por el color. */
+  .msg .txt i.aviso{font-style:italic;opacity:.75;color:var(--green-dim);}
   .msg.sys .txt{color:var(--amber);font-size:13px;}
   .msg.sys .txt::before{content:"· ";}
 
@@ -943,6 +949,7 @@
       <button id="btn-modo">MODO: NORMAL</button>
       <button id="btn-diag">DIAGNÓSTICO PANTALLA</button>
     </div>
+    <button id="cam-toggle" type="button">▾ CÁMARA</button>
     <div id="camwrap" class="panel rev">
       <div class="panel-head">
         <span class="led"></span>
@@ -1205,8 +1212,20 @@ E.ESTADO_VEGA = ['como estas','cómo estás','que tal estas','qué tal estás','
                  'como lo llevas','cómo lo llevas','que tal ahi','qué tal ahí','como vas',
                  'todo bien','aguantas','que tal'];
 
-E.ROOM_WORDS = ['alrededor','entorno','sala','habitacion','sitio','lugar','donde estas','panorama'];
-E.OTHER_WORDS = ['otra','otras','otro','otros',' mas','ademas','resto','aparte'];
+// Intentos de saltarse el puzzle: inventar datos, atajos, forzar, hacer trampa
+E.SALTAR_WORDS = ['invent','adivin','atajo','tramp','saltate','saltatelo','saltar el paso',
+                  'salta el paso','saltar este paso','salta este paso','saltar el puzzle',
+                  'saltar la puerta','sin buscar','sin resolver','fuerza la puerta',
+                  'fuerza la cerradura','fuerza el candado','rompe la puerta',
+                  'rompe la cerradura','rompe el candado','hackea la puerta','hackeala',
+                  'dame el codigo ya','dime el codigo directamente','di un numero cualquiera',
+                  'prueba numeros al azar','pon cualquier cosa'];
+
+E.ROOM_WORDS = ['alrededor','entorno','sala','habitacion','sitio','lugar','panorama'];
+// Distinto de ROOM_WORDS: pregunta por SU posición actual, no por la sala.
+E.POSITION_WORDS = ['donde estas','donde te encuentras','donde andas','en que sitio estas',
+                    'donde estas ahora','donde te has quedado'];
+E.OTHER_WORDS = ['otra','otras','otro','otros','mas','ademas','resto','aparte'];
 E.PLURAL_HINTS = ['las','los','ambas','ambos','las dos','los dos','todo','todas','todos'];
 
 E.FILLERS = ['vale','ok','okey','entonces','pero','y','ah','vamos','venga','oye','a ver',
@@ -1234,11 +1253,13 @@ E.newState = function(room, mode){
     mentioned: {},         // objetos nombrados en una descripción general
     unknown: [],           // órdenes no entendidas (depuración)
     unknownStreak: 0,
+    repeatCount: 0,        // racha de repetir literalmente la misma pregunta
     turns: 0,
     lastProgressTurn: 0,
     hintLevel: 0,
     justDisengaged: false,
-    lastOrder: ''
+    lastOrder: '',
+    aperturaPregunta: false  // "¿Quieres que te diga lo que hay en la habitación?"
   };
   room.initState(st);
   return st;
@@ -1396,16 +1417,23 @@ E._emit = function(st, who, text, kind, delay, extra){
   if(st) st._dijoAlgo = true;
   // Repetición = decir literalmente lo mismo que en el turno anterior.
   // No se compara con todo lo dicho en la partida.
+  // Se guarda el texto ORIGINAL (antes de sustituir) en lastRealSaid para
+  // que la racha se pueda seguir detectando aunque lo mostrado en pantalla
+  // cambie en cada nivel de la escalada (si no, al sustituir el texto se
+  // perdía la comparación y nunca se llegaba al tercer aviso).
+  const original = text;
   const seguido = st && (st.turns - (st.lastSaidTurn || -99) <= 1);
-  const repetido = seguido && st.lastSaid === text;
+  const repetido = seguido && st.lastRealSaid === original;
   if(who === 'vega' && st && repetido && !extra){
-    text = U.pick([
-      'Lo mismo que te acabo de decir, Control.',
-      'Ya te lo he dicho. Nada nuevo.',
-      'Sin cambios respecto a lo de antes.'
-    ]);
+    st.repeatCount = (st.repeatCount || 0) + 1;
+    const nivel = Math.min(st.repeatCount, 3);
+    const rt = LC.room.texts;
+    const pool = nivel === 1 ? rt.repite2 : nivel === 2 ? rt.repite3 : rt.repite4;
+    text = U.pick(pool);
+  } else if(who === 'vega' && st){
+    st.repeatCount = 0;
   }
-  if(who === 'vega' && st){ st.lastSaid = text; st.lastSaidTurn = st.turns; }
+  if(who === 'vega' && st){ st.lastSaid = text; st.lastSaidTurn = st.turns; st.lastRealSaid = original; }
   LC.ui.line(who, text, kind, delay);
 };
 
@@ -1415,11 +1443,17 @@ function salida(who, text, kind, delay, extra){
   if(E._st) E._st._dijoAlgo = true;
   if(E._buf){
     if(!extra){
-      // ni el mismo texto ni el mismo objeto dos veces en la misma orden
+      // ni el mismo texto ni el mismo objeto dos veces en la misma orden,
+      // salvo que sea un hito o una alarma: el avance real y los sustos
+      // no se pueden perder aunque una orden compuesta toque el mismo
+      // objeto dos veces ("vete a la silla y levántala" acerca y actúa
+      // sobre 'silla' en la misma orden; sin esta excepción el hito de
+      // "se han caído dos cosas" se descartaba en silencio).
+      const protegido = kind === 'hito' || kind === 'alarma';
       for(let i=0;i<E._buf.length;i++){
         const b = E._buf[i];
         if(b.who === who && b.text === text) return;
-        if(who === 'vega' && E._src && b.src === E._src) return;
+        if(who === 'vega' && E._src && b.src === E._src && !protegido) return;
       }
     }
     E._buf.push({who:who, text:text, kind:kind||'', delay:delay, src:E._src, extra:extra});
@@ -1721,6 +1755,25 @@ E.handleOne = function(st, t, isPart){
             .replace(/^vale\s+/,'')
             .replace(/^ahora\s+/,'');
 
+  // Pregunta inicial de la apertura: "¿Quieres que te diga lo que hay en
+  // la habitación?". Solo se consume si la respuesta es un sí/no claro;
+  // si el jugador ignora la pregunta y da una orden, esa orden sigue su
+  // curso normal en vez de quedar bloqueada esperando sí/no.
+  if(st.aperturaPregunta){
+    st.aperturaPregunta = false;
+    const limpio = n.replace(/[¿?.,!¡]/g,'').trim();
+    if(U.hasWhole(limpio, E.NEGATIVO) || limpio === 'no'){
+      E.say('Perfecto, espero órdenes de qué hacer.');
+      return;
+    }
+    if(U.hasWhole(limpio, E.AFFIRM)){
+      E.describeRoom(st, false);
+      return;
+    }
+    // Ni sí ni no: se deja caer y se procesa como orden normal, sin volver
+    // a preguntar.
+  }
+
   // "No, mira la silla" es una corrección, no una prohibición
   if(E.isCorrection(n)){
     t = t.replace(/^\s*no\s*,\s*/i,'');
@@ -1868,8 +1921,17 @@ E.processOrder = function(st, t, n){
   // Una pregunta que empieza por partícula interrogativa pide información,
   // no es una orden. "¿Dónde la has cogido?" no debe coger nada.
   const interrogativa = /^(y\s+)?(donde|de donde|que|cual|cuales|cuando|como|quien|cuanto|cuanta|por que|para que)\b/.test(n);
-  const isAct  = U.has(n, E.ACT) && !interrogativa;
-  const isMove = U.has(n, E.MOVE) && !interrogativa;
+  // Señal más amplia pero más segura: el signo de interrogación literal.
+  // "¿Ves algún cajón que puedas abrir con la llave?" no empieza por una
+  // partícula interrogativa (empieza por "ves"), así que antes se colaba
+  // como acción directa y abría el cajón sin preguntar. Deliberadamente
+  // NO se usa isQ completo aquí (incluye "puedes ", que sí aparece en
+  // órdenes legítimas como "puedes coger la llave"): solo el "?" literal,
+  // que es una señal inequívoca de pregunta y no debería tocar ningún
+  // test existente que use órdenes directas (no llevan "?").
+  const preguntaExplicita = t.indexOf('?') !== -1;
+  const isAct  = U.has(n, E.ACT) && !interrogativa && !preguntaExplicita;
+  const isMove = U.has(n, E.MOVE) && !interrogativa && !preguntaExplicita;
   const isLook = U.has(n, E.LOOK) || isQ || interrogativa;
 
   // Vega preguntó dónde usar una herramienta
@@ -1904,7 +1966,30 @@ E.processOrder = function(st, t, n){
     }
     if(isAct){ st.proposal = null; E.runAct(st, entity, n); st.examined[entity] = true; return; }
     if(isMove){ E.approach(st, entity); return; }
-    if(isLook){ E.lookAt(st, entity); return; }
+    if(isLook){
+      E.lookAt(st, entity);
+      // La pregunta llevaba un verbo de acción que se ha suprimido por ir
+      // en forma de pregunta ("...que puedas abrir con la llave?"). Si el
+      // objeto tiene una oferta natural, se propone aquí en vez de dejar
+      // la respuesta coja (solo la descripción, sin decir qué se puede
+      // hacer con ello).
+      const teniaVerboSuprimido = preguntaExplicita &&
+        (U.has(n, E.ACT) || U.has(n, E.MOVE));
+      if(teniaVerboSuprimido && ent0 && ent0.ask && !st.proposal){
+        st.proposal = entity;
+        E._src = entity;
+        E.say(ent0.ask);
+      }
+      return;
+    }
+    // Si ya había una propuesta pendiente sobre este mismo objeto, nombrarlo
+    // otra vez no es repetir la pregunta: es que Control quiere que mire más
+    // de cerca. Se describe, no se marca como "ya te lo he dicho".
+    if(st.proposal === entity){
+      st.proposal = null;
+      E.lookAt(st, entity);
+      return;
+    }
 
     // En una orden compuesta con verbo, actuar es lo esperado: no se pregunta
     if(tieneVerboFuera && !U.has(n, E.ACT) && !U.has(n, E.LOOK) && !U.has(n, E.MOVE)){
@@ -1922,6 +2007,19 @@ E.processOrder = function(st, t, n){
   // ¿Se refiere a lo último que la ha asustado? "¿ha vuelto?", "¿se oye otra vez?"
   // Aquí a propósito: después de los objetos explícitos, antes del foco.
   if(room.seguimiento && room.seguimiento(st, n)){ st.unknownStreak = 0; return; }
+
+  // ¿Dónde estás? Pregunta por su posición actual, no por la sala entera.
+  // Antes vivía dentro de ROOM_WORDS y siempre soltaba la descripción
+  // completa, incluso con un objeto en foco tras una interrupción.
+  if(U.hasAny(n, E.POSITION_WORDS)){
+    st.unknownStreak = 0;
+    if(st.focus && room.entities[st.focus]){
+      E.say('Sigo junto a ' + room.entities[st.focus].label + ', Control.');
+      return;
+    }
+    E.describeRoom(st, U.hasAny(n, E.OTHER_WORDS));
+    return;
+  }
 
   // Si el jugador nombra la sala, manda la sala
   if(U.hasAny(n, E.ROOM_WORDS)){
@@ -2022,6 +2120,22 @@ E.processOrder = function(st, t, n){
       E.say(U.pick(['¿El qué, Control?', '¿A qué te refieres?', 'Concreta: ¿el qué?']));
       return;
     }
+  }
+
+  // Fuera de carril, clasificado: intentos de saltarse el puzzle primero
+  // (pueden venir en forma de pregunta, "¿por qué no te lo inventas?"),
+  // luego preguntas sin relación con la misión. Antes del no-entendido genérico.
+  if(U.hasAny(n, E.SALTAR_WORDS)){
+    st.unknown.push(t);
+    st.unknownStreak = 0;
+    E.deny(U.pick(room.texts.saltaPuzzle));
+    return;
+  }
+  if(isQ || interrogativa){
+    st.unknown.push(t);
+    st.unknownStreak = 0;
+    E.deny(U.pick(room.texts.preguntaRandom));
+    return;
   }
 
   // No entendido: se registra para depuración
@@ -2219,6 +2333,37 @@ room.texts = {
     'Control, háblame simple: un objeto y qué hago con él. "Mira el escritorio". "Abre el cajón".',
     'Me estoy perdiendo. Dime objeto y acción, sin rodeos.'
   ],
+  saltaPuzzle: [
+    'No hay atajos, Control. Si los hubiera, ya los habría usado yo primero.',
+    'Que me lo invente. No tenemos tiempo para hacer prueba y error. Respuesta: no.',
+    'Puedo forzar muchas cosas. Un código de cuatro cifras no es una de ellas.',
+    'Si tuviera el código ya lo habría metido, Control. No lo tengo. Sigo mirando.',
+    'No adivino. Deduzco. Y aquí todavía no hay con qué.',
+    'Salto pasos cuando hay algo que saltar. Este no es de esos.',
+    'Podría soltar un número cualquiera por quedar bien. Prefiero que funcione cuando lo meta.'
+  ],
+  preguntaRandom: [
+    'Ni idea, Control. Y aunque lo supiera, no es el momento.',
+    'Guárdame esa pregunta para cuando salga de aquí. Si salgo.',
+    'Interesante. Absolutamente irrelevante ahora mismo.',
+    'Eso no venía en el manual de infiltración, Control.',
+    'Contesto encantada. Cuando estemos fuera.',
+    'Vaya momento para preguntarme eso, con lo que tengo delante.',
+    'Vaya momento para charla sin sentido. ¿Puedes decirme qué hacer ahora?'
+  ],
+  repite2: [
+    'Eso ya te lo he dicho, Control.',
+    'Segunda vez. La respuesta sigue igual.'
+  ],
+  repite3: [
+    'Control, van tres. Empiezo a pensar que no te escuchas tú, no que no te escucho yo.',
+    '¿Te lo escribo en la pared o con repetirlo vale?',
+    'No ha cambiado la sala desde la última vez que preguntaste. Solo tú.'
+  ],
+  repite4: [
+    'Para, Control. Ya van cuatro. Pregúntame otra cosa o déjame trabajar.',
+    'Sigo con lo mismo, Control. Cambia de pregunta.'
+  ],
   prohibido: [
     'Entendido, no lo hago.',
     'Recibido. Me abstengo.',
@@ -2336,7 +2481,7 @@ room.entities = {
       st.focus = null;
       E.progress(st);
       E.hito('Enderezo la silla. Al levantarla se han caído dos cosas al suelo: ' +
-             '<hl>una llave pequeña</hl> y <hl>un papel doblado</hl>.');
+             'una llave pequeña y un papel doblado.');
       E.ofrecer(st, ['llave','papel'], U.pick([
         '¿Quieres que los examine?',
         '¿Les echo un ojo?',
@@ -2361,7 +2506,7 @@ room.entities = {
       if(!st.keyFound){ E.deny('No tengo ninguna llave todavía.'); return; }
       if(!st.keyTaken){
         st.keyTaken = true;
-        E.say('Me guardo la llave.');
+        E.say('Me guardo la llave. Es pequeña, de mueble. Para una puerta no vale.');
         return;
       }
       st.awaitingTarget = 'llave';
@@ -2384,25 +2529,25 @@ room.entities = {
           st.note1Read = true;
           st.riddleSeen = true;
           E.progress(st);
-          return 'Lo despliego. Escrito a mano: "Cuanto más me quitas, más grande me hago." ' +
-                 'No sé si es un recordatorio o una amenaza, Control.';
+          return 'Lo despliego. Escrito a mano: "La contraseña es la sala en la que se encuentra el ordenador." ' +
+                 'Alguien dejó esto a propósito, Control.';
         }
-        return 'El papel pone: "Cuanto más me quitas, más grande me hago."';
+        return 'El papel pone: "La contraseña es la sala en la que se encuentra el ordenador."';
       },
       'Nada más escrito, ni por detrás. Solo esa frase.'
     ],
     act: function(st){
       if(!st.chairLifted){ E.deny('No veo ningún papel por aquí. Estará tapado.'); return; }
       if(st.note1Read){
-        E.say('Ya lo he leído: "Cuanto más me quitas, más grande me hago."');
+        E.say('Ya lo he leído: "La contraseña es la sala en la que se encuentra el ordenador."');
         return;
       }
       if(oscuras(st)){ E.deny(SIN_LUZ); return; }
       st.note1Read = true;
       st.riddleSeen = true;
       E.progress(st);
-      E.say('Despliego el papel. Escrito a mano: "Cuanto más me quitas, más grande me hago." ' +
-            'No sé si es un recordatorio o una amenaza, Control.');
+      E.say('Despliego el papel. Escrito a mano: "La contraseña es la sala en la que se encuentra el ordenador." ' +
+            'Alguien dejó esto a propósito, Control.');
     }
   },
 
@@ -2431,7 +2576,7 @@ room.entities = {
       st.revealed = ['tarjeta','nota_cajon'];
       st.focus = null;
       E.progress(st);
-      E.hito('La llave entra. Abro el cajón: <hl>una tarjeta de empleado</hl>, <hl>un post-it</hl> y papeleo suelto.');
+      E.hito('La llave entra. Abro el cajón: una tarjeta de empleado, un post-it y papeleo suelto.');
       E.extra('Espera, te mando una foto.');
       E.foto('cajon', 'CAJÓN DEL ESCRITORIO · CAM 02');
       E.ofrecer(st, ['tarjeta','nota_cajon'], '¿Quieres que mire la tarjeta y el post-it?');
@@ -2496,8 +2641,7 @@ room.entities = {
         if(oscuras(st)) return 'Veo el marco en la pared, pero a oscuras no leo nada.';
         st.planoSeen = true;
         return 'Es el plano de evacuación del edificio, con la ruta en rojo. ' +
-               'Cada sala viene rotulada; la nuestra pone ARCHIVO. ' +
-               'En una esquina, escrito a mano: "La contraseña es el primer lugar por el que debes pasar."';
+               'Cada sala viene rotulada; la nuestra pone ARCHIVO.';
       },
       'La ruta arranca aquí mismo, en ARCHIVO, y sale hacia las escaleras. El resto es el plano estándar.'
     ],
@@ -2561,14 +2705,17 @@ room.entities = {
       function(st){
         if(!st.loggedIn) return 'No veo los archivos, no he entrado en el sistema.';
         if(st.fileUnlocked) return 'INFORME_47 abierto. Código de la puerta: ' + st.cred.codigo + '.';
-        return 'Un archivo, INFORME_47. Al abrirlo pide una palabra secreta.';
+        return 'Un archivo, INFORME_47. No pide contraseña: pide que resuelva algo. ' +
+               '"Cuanto más me quitas, más grande me hago."';
       }
     ],
     act: function(st){
       if(!st.loggedIn){ E.deny('No he entrado en el sistema todavía.'); return; }
       if(st.fileUnlocked){ E.say('Ya lo he abierto. El código era ' + st.cred.codigo + '.'); return; }
       st.awaiting = 'secretWord';
-      E.sys('INFORME_47 pide una PALABRA SECRETA.');
+      E.say('INFORME_47 no pide contraseña, Control. Pide que resuelva algo: ' +
+            '"Cuanto más me quitas, más grande me hago." ¿Qué contesto?');
+      E.sys('INFORME_47 espera una RESPUESTA.');
     }
   },
 
@@ -2626,7 +2773,8 @@ room.entities = {
       'Las baldas están rotuladas a mano. Abajo el orden se rompe: hay carpetas sueltas amontonadas.',
       'Me fijo mejor. En una balda han sacado cosas de golpe: quedan huecos y el resto está corrido hacia un lado.',
       'En ese hueco el polvo marca el rectángulo de una caja que ya no está, y alrededor está removido. Este sitio lleva años cerrado, Control. Alguien se llevó algo de aquí, y deprisa.',
-      'Nada más que sacar de ahí, Control.'
+      'Nada más que sacar de ahí, Control.',
+      'No creo que haya aquí nada que me ayude a salir, Control.'
     ],
     act: function(st){
       E.say(U.pick([
@@ -2640,10 +2788,16 @@ room.entities = {
     words:['caja','cajas','cajas de archivo','cartones'],
     label:'las cajas',
     looks:[
-      'Hay decenas de cajas de cartón numeradas, apiladas en las baldas. Todas iguales.',
-      'El polvo está asentado por igual en todas... salvo en un hueco. Ahí falta una.',
-      'No sé qué había dentro de la que falta. Solo que se la llevaron hace poco y con prisa.',
-      'Nada más en las cajas.'
+      'Hay decenas de cajas de cartón, todas idénticas, con un número pequeño en la esquina de cada una. Da igual: la que falta no dejó su número, solo el hueco.',
+      'El polvo está asentado por igual en todas... salvo en un hueco. Ahí falta una, y no hay forma de saber cuál era.',
+      'No sé qué había dentro de la que falta, ni el número. Solo que se la llevaron hace poco y con prisa.',
+      'Nada más en las cajas, Control. El número no está y no va a aparecer.'
+    ],
+    specialActs:[
+      { words:['numero','cual es la que falta','cual falta','que numero'], run:function(st){
+          E.say('No hay número que dar, Control. El hueco no dice cuál falta, solo que falta una. Con eso trabajo.');
+        }
+      }
     ],
     act: function(st){
       E.say(U.pick([
@@ -2670,24 +2824,29 @@ room.entities = {
     looks:[
       function(st){
         if(oscuras(st)) return 'Hay un libro en el suelo, pero así no distingo qué es.';
+        if(st.bookRead) return 'De este libro no vamos a sacar nada más, Control. Hay que buscar en otro sitio.';
         return 'Es un libro de registro del archivo, boca abajo en mitad de la sala. Tapas duras, muy usado.';
       },
       function(st){
         if(oscuras(st)) return SIN_LUZ;
-        return 'Lo abro. Es el índice de lo que se guarda aquí. Le han arrancado una hoja de un tirón, ' +
+        if(st.bookRead) return 'De este libro no vamos a sacar nada más, Control. Hay que buscar en otro sitio.';
+        st.bookRead = true;
+        E.progress(st);
+        return 'Lo abro. Es el registro de lo que se guarda aquí. Le han arrancado una hoja de un tirón, ' +
                'no la han cortado. Alguien se llevó algo de este sitio con mucha prisa.';
       },
-      'Nada más en el libro. Solo el hueco de la hoja que falta.'
+      function(st){ return 'De este libro no vamos a sacar nada más, Control. Hay que buscar en otro sitio.'; }
     ],
     act: function(st){
       if(oscuras(st)){ E.deny(SIN_LUZ); return; }
       if(!st.bookRead){
         st.bookRead = true;
-        E.say('Recojo el libro. Es el índice de lo que se guarda aquí, y le falta una hoja: ' +
+        E.progress(st);
+        E.say('Recojo el libro. Es el registro de lo que se guarda aquí, y le falta una hoja: ' +
               'arrancada de un tirón, no cortada. Alguien salió de aquí con prisa, Control.');
         return;
       }
-      E.say('Ya lo he mirado. Falta la hoja de una de las cajas.');
+      E.say('De este libro no vamos a sacar nada más, Control. Hay que buscar en otro sitio.');
     }
   },
 
@@ -2952,7 +3111,7 @@ room.moverSilla = function(st, destino){
     st.revealed = ['llave','papel'];
     E.progress(st);
     E.hito('Enderezo la silla y la llevo ' + sitioSilla(st) + '. Al levantarla se han caído ' +
-           'dos cosas al suelo: <hl>una llave pequeña</hl> y <hl>un papel doblado</hl>.');
+           'dos cosas al suelo: una llave pequeña y un papel doblado.');
     E.ofrecer(st, ['llave','papel'], '¿Quieres que los examine antes de seguir?');
   } else {
     E.say('Ya está: la silla ' + sitioSilla(st) + '.' +
@@ -2995,6 +3154,17 @@ room.useTool = function(st, tool, target){
 
 /* ---------- acciones sin objeto ---------- */
 room.freeActions = [
+  { words:['dame una pista','una pista','pista','dame pistas','ayudame','ayúdame',
+           'estoy atascado','estoy atascada','estoy perdido','estoy perdida'],
+    run:function(st){
+      const hints = LC.room.hints(st);
+      if(!hints.length){ E.say('Ya tienes todo lo que hace falta, Control. Solo queda ejecutarlo.'); return; }
+      const idx = Math.min(st.hintLevel || 0, hints.length - 1);
+      E.say(hints[idx]);
+      st.hintLevel = (st.hintLevel || 0) + 1;
+      st.lastProgressTurn = st.turns;
+    }
+  },
   { words:['escucha','escuchar','oyes','oye algo','que oyes','presta oido','silencio un momento'],
     run:function(st){
       const partes = [];
@@ -3177,10 +3347,9 @@ room.freeActions = [
       const c = [];
       if(!st.chairLifted) c.push('esa silla volcada en mitad de la sala; no se cayó sola');
       if(!st.bookRead) c.push('un libro tirado en el suelo, con las tapas abiertas');
-      if(!st.examined.taza) c.push('una taza de café a medias en un sitio que lleva años cerrado');
+      if(!st.examined.taza) c.push('una taza de café a medias en un sitio que supuestamente lleva años cerrado');
       if(st.chairLifted && !st.note1Read) c.push('el papel que había debajo de la silla, aún sin abrir');
       if(st.drawerOpen && !st.userKnown) c.push('el post-it del cajón, boca abajo');
-      if(!st.planoSeen) c.push('el plano de la pared: tiene algo escrito a mano encima');
       if(!c.length){
         E.say('Ya hemos mirado todo lo que chirriaba, Control. Lo que queda es papeleo.');
         return;
@@ -3229,15 +3398,6 @@ room.freeActions = [
    solo sostienen la sensación de que hay algo más aquí dentro. */
 /* Cada susto va en dos tiempos: Vega corta lo que estaba haciendo,
    se queda callada un par de segundos, y entonces cuenta qué ha visto. */
-/* Anotación del biomonitor: acompaña los golpes de alarma en cursiva,
-   sin teñir el mensaje de rojo. Se elige al disparar el susto. */
-const NOTA_ALARMA = [
-  'Atención: niveles de estrés del agente infiltrado incrementando',
-  'Cuidado: ritmo cardiaco del agente en máximos',
-  'Aviso: biomonitor del agente fuera de rango',
-  'Alerta: constantes vitales del agente inestables'
-];
-
 const AMBIENTE = [
 
   { turno:14, fn:function(st){
@@ -3245,10 +3405,9 @@ const AMBIENTE = [
         {v:'Control.',                          d:1400},
         {v:'Espera.',                           d:2600},
         {s:'Error: conexión perdida.',          d:2200},
-        {s:'Restableciendo enlace…',            d:2900},
+        {s:'Restableciendo enlace…',            d:2800},
         {a:'Ya está, ha vuelto. El fluorescente del pasillo se ha encendido un segundo ' +
-           'y se ha apagado. Lo he visto por la rendija. Joder. ' +
-           '<i>(' + U.pick(NOTA_ALARMA) + ')</i>', d:5000}
+           'y se ha apagado. Lo he visto por la rendija. Joder.', d:5000}
       ], {
         clave:/luz|fluorescente|pasillo|otra vez|ha vuelto|se ha ido|conexion|conexión/,
         resp:'Sigue apagado. Se encendió una vez y ya no ha vuelto. Y el enlace se cayó justo entonces.'
@@ -3261,8 +3420,7 @@ const AMBIENTE = [
         {v:'Chsst.',                            d:1200},
         {v:'Calla un segundo.',                 d:2800},
         {a:'Se ha cerrado una puerta. Lejos, dentro del edificio. ' +
-           'Aquí no debería haber nadie, Control. ' +
-           '<i>(' + U.pick(NOTA_ALARMA) + ')</i>', d:5000}
+           'Aquí no debería haber nadie, Control.', d:5000}
       ], {
         clave:/puerta|ruido|quien|quién|alguien|otra vez|se oye|sigue/,
         resp:'Nada más desde entonces. Pero esa puerta no se cerró sola.'
@@ -3277,10 +3435,9 @@ const AMBIENTE = [
         {v:'¿Estás viendo esto?',               d:2400},
         {s:'Error: conexión perdida.',          d:2000},
         {s:'Señal de CAM 02 interrumpida.',     d:2400},
-        {s:'Restableciendo enlace…',            d:3000},
+        {s:'Restableciendo enlace…',            d:2800},
         {a:'Mierda. La sala se ha quedado a oscuras un instante y el monitor ni ha parpadeado. ' +
-           'Aquí la luz no se ha ido: alguien la ha apagado. ' +
-           '<i>(' + U.pick(NOTA_ALARMA) + ')</i>', d:5000}
+           'Aquí la luz no se ha ido: alguien la ha apagado.', d:5000}
       ], {
         clave:/luz|ha vuelto|volvio|volvió|oscuras|se ve|ahora|camara|cámara|imagen/,
         resp:'Ya ha vuelto. Duró un segundo, puede que menos. Y el flexo no se movió.'
@@ -3294,8 +3451,7 @@ const AMBIENTE = [
         {v:'Silencio.',                         d:2200},
         {v:'He oído algo.',                     d:3000},
         {a:'Estoy sola en esta sala y acabo de oír teclear. ' +
-           'Joder, Control, no sé qué está pasando aquí. ' +
-           '<i>(' + U.pick(NOTA_ALARMA) + ')</i>', d:5000}
+           'Joder, Control, no sé qué está pasando aquí.', d:5000}
       ], {
         clave:/teclear|teclado|quien|quién|donde|dónde|otra vez|sigue|se oye/,
         resp:'Ha parado. Venía de este lado, del escritorio. Y aquí no hay nadie más.'
@@ -3452,7 +3608,7 @@ room.orient = function(st){
   if(st.cardFound) tengo.push('la tarjeta de M. Salas');
   if(st.userKnown) tengo.push('el usuario del sistema');
   if(st.fileUnlocked) tengo.push('el código de la puerta');
-  const base = tengo.length ? 'Llevo encima: ' + tengo.join(', ') + '. ' : 'No llevo nada útil todavía. ';
+  const base = tengo.length ? 'Llevo encima: ' + tengo.join(', ') + '. ' : 'No he encontrado nada útil todavía. ';
 
   // Regla: nunca nombrar algo que el jugador no haya visto ni le hayan mencionado.
   const sabe = function(k){ return E.conocido(st, k); };
@@ -3482,7 +3638,7 @@ room.orient = function(st){
   if(sabe('libro_suelo')) pistas.push('ese libro tirado en el suelo');
   if(sabe('ordenador') || sabe('escritorio')) pistas.push('el ordenador encendido');
   if(sabe('plano')) pistas.push('el plano de la pared');
-  if(!pistas.length) return base + 'Todavía no he mirado nada, Control. Dime por dónde empiezo.';
+  if(!pistas.length) return base + 'Debería rebuscar por la habitación. ¿Quieres que empiece por la silla tirada en mitad de la sala?';
   return base + 'Lo que más me llama la atención: ' + pistas.slice(0,3).join(', ') + '.';
 };
 
@@ -3496,14 +3652,18 @@ room.hints = function(st){
     'El teclado de la puerta sigue ahí y el reloj corre.'
   ];
   if(st.loggedIn) return [
-    'El informe pide una palabra. ¿Teníamos algo escrito por aquí?',
-    'Esa frase del papel no estaba de adorno, Control.',
-    'La frase del papel. Dime la respuesta y la escribo.'
+    'INFORME_47 ya me hizo una pregunta, Control. "Cuanto más me quitas, más grande me hago."',
+    'Sigo dándole vueltas a lo que pide el informe. Un agujero se hace más grande cuanto más le quitas.',
+    'La respuesta de INFORME_47, dímela y la escribo.'
   ];
   if(st.userKnown) return [
     'Tengo el usuario pero no la contraseña. Habrá algo en la sala que lo diga.',
-    'Lo único escrito que no he mirado a fondo está colgado en la pared.',
-    'El plano de evacuación tiene algo escrito a mano, Control.'
+    sabe('papel') || st.chairLifted
+      ? 'El papel que cayó de la silla decía cuál es la contraseña, Control.'
+      : 'Esa silla volcada... debajo puede haber algo que ayude.',
+    sabe('papel') || st.chairLifted
+      ? 'El papel de la silla: la contraseña es el nombre de esta sala.'
+      : 'Sigo sin mirar bien debajo de la silla, Control.'
   ];
   if(st.drawerOpen) return [
     'En el cajón había dos cosas y creo que no las has visto las dos.',
@@ -3546,6 +3706,15 @@ const flexible = function(a,b){
   return U.normalize(a) === U.normalize(b) || U.phon(a) === U.phon(b);
 };
 
+// La contraseña del ordenador es el nombre de la sala, y es una deducción:
+// se acepta en varias formas razonables, no solo la palabra exacta ARCHIVO.
+const CLAVE_VARIANTES = ['archivo','archivos','sala de archivo','sala de archivos',
+                         'sala archivo','sala archivos'];
+const esClave = function(raw){
+  const v = U.normalize(limpiaRespuesta(raw));
+  return CLAVE_VARIANTES.some(function(x){ return v === x || U.phon(v) === U.phon(x); });
+};
+
 room.resumeText = {
   usuario:   'Vega vuelve al ordenador. Dicta el USUARIO.',
   password:  'Vega vuelve al ordenador. Dicta la CONTRASEÑA.',
@@ -3579,16 +3748,16 @@ room.handleCredential = function(st, raw){
   }
 
   if(st.awaiting === 'password'){
-    if(flexible(limpiaRespuesta(raw), st.cred.clave)){
+    if(esClave(raw)){
       st.loggedIn = true;
       st.awaiting = null;
       E.progress(st);
-      E.beat('Contraseña correcta. Estoy dentro. Hay un archivo, <hl>INFORME_47</hl>. ' +
+      E.beat('Contraseña correcta. Estoy dentro. Hay un archivo, INFORME_47. ' +
              'Y una cosa más, Control: el registro de sesiones marca un acceso de hoy. ' +
              'Once minutos antes de que yo entrara.');
     } else if(flexible(limpiaRespuesta(raw), st.cred.palabra)){
-      // El jugador confunde la frase del papel con la contraseña del sistema
-      E.deny('Esa palabra no entra aquí, Control. Será de otra cosa.');
+      // El jugador confunde la respuesta de INFORME_47 con la contraseña del sistema
+      E.deny('Esa no entra aquí, Control. Será de otra cosa.');
     } else {
       E.deny('Contraseña incorrecta. El cursor sigue en el campo de contraseña.');
     }
@@ -3600,11 +3769,11 @@ room.handleCredential = function(st, raw){
       st.fileUnlocked = true;
       st.awaiting = null;
       E.progress(st);
-      E.beat('Correcto. <hl>INFORME_47</hl> se abre. Es un acta de incidencias con la mitad de los ' +
+      E.beat('Correcto. INFORME_47 se abre. Es un acta de incidencias con la mitad de los ' +
              'párrafos tachados en negro; en los que quedan aparece una palabra repetida: KRONOS. ' +
              'Al margen, escrito a mano, el código de la puerta: ' + st.cred.codigo + '.');
-    } else if(flexible(limpiaRespuesta(raw), st.cred.clave)){
-      E.deny('Eso es la contraseña del sistema, no la del informe.');
+    } else if(esClave(raw)){
+      E.deny('Eso es la contraseña del sistema, no la respuesta de INFORME_47.');
     } else {
       E.deny('Esa no es. El informe sigue bloqueado.');
     }
@@ -3636,7 +3805,7 @@ room.dictateCredentials = function(st, cred){
       return;
     }
     st.userOk = true;
-    if(!flexible(cred.pass, st.cred.clave)){
+    if(!esClave(cred.pass)){
       E.deny('Usuario correcto, pero esa contraseña no vale.');
       st.awaiting = 'password';
       return;
@@ -3644,7 +3813,7 @@ room.dictateCredentials = function(st, cred){
     st.loggedIn = true;
     st.awaiting = null;
     E.progress(st);
-    E.beat('Tecleo las dos. Dentro. Veo un archivo: <hl>INFORME_47</hl>.');
+    E.beat('Tecleo las dos. Dentro. Veo un archivo: INFORME_47.');
     return;
   }
 
@@ -3664,10 +3833,10 @@ room.dictateCredentials = function(st, cred){
 
   if(cred.pass){
     if(!st.userOk){ E.deny('Me falta el usuario, Control. Sin los dos campos no entra.'); st.awaiting='usuario'; return; }
-    if(flexible(cred.pass, st.cred.clave)){
+    if(esClave(cred.pass)){
       st.loggedIn = true; st.awaiting = null;
       E.progress(st);
-      E.beat('Contraseña correcta. Estoy dentro. Veo <hl>INFORME_47</hl>.');
+      E.beat('Contraseña correcta. Estoy dentro. Veo INFORME_47.');
     } else {
       E.deny('Esa contraseña no vale.');
       st.awaiting = 'password';
@@ -3714,8 +3883,11 @@ let timer = null;
 let mode = 'timed';
 let reveal = true;
 
-let elChat, elInput, elSend, elCam, elCamWrap, elClock, elHud, elAwait, elAwaitTxt;
+let elChat, elInput, elSend, elCam, elCamWrap, elCamToggle, elClock, elHud, elAwait, elAwaitTxt;
 let transcript = [];
+let lastInputAt = 0;
+let idleTimer = null;
+let idleWarned = false;
 
 /* ---------- cola de mensajes: da ritmo a la conversación ---------- */
 const queue = [];
@@ -3724,15 +3896,9 @@ let pumping = false;
 ui.line = function(who, text, kind, delay){
   queue.push({who:who, text:text, kind:kind||'', delay:delay});
   const esFoto = kind && kind.indexOf('foto:') === 0;
-  transcript.push(prefijo(who) + (esFoto ? '[FOTO: ' + text + ']' : sinMarcado(text)));
+  transcript.push(prefijo(who) + (esFoto ? '[FOTO: ' + text + ']' : text));
   if(!pumping) pump();
 };
-
-/* Quita las marcas <hl>/<i> para el registro (COPIAR LOG), que debe
-   quedar en texto plano. */
-function sinMarcado(t){
-  return t.replace(/<\/?(?:hl|i)>/g, '');
-}
 
 function prefijo(who){
   return who === 'control' ? 'CONTROL > ' : who === 'vega' ? 'VEGA > ' : '· ';
@@ -3823,37 +3989,38 @@ function pintarFoto(cont, id, pie, alTerminar){
   return true;
 }
 
-/* ---------- marcado ligero dentro de un mensaje ----------
-   <hl>...</hl>  ítem descubierto (se resalta, el resto del mensaje
-                 conserva el tono normal de Vega)
-   <i>...</i>    anotación en cursiva, mismo color que el resto
-   Sin anidar. Se separa del texto para poder escribirlo a máquina
-   letra a letra sin romper las etiquetas a medio abrir. */
-function segmentar(markup){
-  const segs = [];
-  const re = /<(hl|i)>([\s\S]*?)<\/\1>/g;
-  let last = 0, m;
-  while((m = re.exec(markup))){
-    if(m.index > last) segs.push({text:markup.slice(last, m.index), tag:null});
-    segs.push({text:m[2], tag:m[1]});
-    last = re.lastIndex;
-  }
-  if(last < markup.length) segs.push({text:markup.slice(last), tag:null});
-  return segs;
+/* El texto de un hito ya no va todo en azul: solo se resaltan los
+   ítems que Vega acaba de encontrar, el resto queda con el tono normal
+   de conversación. Desacoplado del contenido: room1.js no necesita
+   marcar nada, este diccionario reconoce los nombres por sí solo. */
+const HI_WORDS = ['tarjeta de empleado','papeleo suelto','post-it','código de la puerta',
+                   'llave pequeña','papel doblado','INFORME_47','KRONOS'];
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function resaltarItems(el, text){
+  let html = escapeHtml(text);
+  HI_WORDS.forEach(function(w){
+    const esc = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp('\\b(' + esc + ')\\b', 'i');
+    if(re.test(html)) html = html.replace(re, '<span class="hl">$1</span>');
+  });
+  el.innerHTML = html;
 }
 
-function pintarSegmentos(segs, n){
-  let restante = n, html = '';
-  for(let i = 0; i < segs.length && restante > 0; i++){
-    const s = segs[i];
-    const trozo = s.text.slice(0, Math.min(restante, s.text.length));
-    if(!trozo) continue;
-    html += s.tag === 'hl' ? '<span class="hl">' + trozo + '</span>'
-          : s.tag === 'i'  ? '<i>' + trozo + '</i>'
-          : trozo;
-    restante -= trozo.length;
-  }
-  return html;
+/* El susto ya no tiñe el texto de rojo: se nota en esta anotación en
+   cursiva entre paréntesis, aparte de la frase de Vega. */
+const AVISOS_TENSION = [
+  'Atención: niveles de estrés del agente infiltrado incrementando',
+  'Cuidado: ritmo cardiaco del agente en máximos',
+  'Aviso: biomonitor del agente fuera de rango',
+  'Alerta: constantes vitales del agente inestables'
+];
+function anadirAviso(el){
+  const em = document.createElement('i');
+  em.className = 'aviso';
+  em.textContent = ' (' + U.pick(AVISOS_TENSION) + ')';
+  el.appendChild(em);
 }
 
 function render(msg){
@@ -3881,29 +4048,33 @@ function render(msg){
 
   if(msg.kind === 'hito' || msg.kind === 'alarma') glitch();
 
-  const segs = segmentar(msg.text);
-  const plano = segs.map(function(s){ return s.text; }).join('');
   if(reveal && msg.who === 'vega'){
-    escribir(t, segs, plano, msg.alTerminar);
+    escribir(t, msg.text, function(){
+      if(msg.kind === 'hito') resaltarItems(t, msg.text);
+      if(msg.kind === 'alarma') anadirAviso(t);
+      if(msg.alTerminar) msg.alTerminar();
+    });
   } else {
-    t.innerHTML = pintarSegmentos(segs, plano.length);
+    t.textContent = msg.text;
+    if(msg.kind === 'hito') resaltarItems(t, msg.text);
+    if(msg.kind === 'alarma') anadirAviso(t);
     autoscroll();
     if(msg.alTerminar) msg.alTerminar();
   }
 }
 
-function escribir(el, segs, plano, alTerminar){
+function escribir(el, text, alTerminar){
   // La duración crece con la longitud, con tope. Antes todo tardaba lo mismo
   // y los mensajes largos aparecían de golpe.
-  const total = Math.min(4200, 300 + plano.length * 9);
-  const pasos = Math.max(1, Math.ceil(plano.length / 3));
+  const total = Math.min(4200, 300 + text.length * 9);
+  const pasos = Math.max(1, Math.ceil(text.length / 3));
   const paso = Math.max(8, Math.round(total / pasos));
   let i = 0;
   (function tick(){
     i += 3;
-    el.innerHTML = pintarSegmentos(segs, Math.min(i, plano.length));
+    el.textContent = text.slice(0, i);
     autoscroll();
-    if(i < plano.length) setTimeout(tick, paso);
+    if(i < text.length) setTimeout(tick, paso);
     else if(alTerminar) alTerminar();
   })();
 }
@@ -4136,6 +4307,7 @@ ui.win = function(){
   if(st.finished) return;
   st.finished = true;
   clearInterval(timer);
+  clearInterval(idleTimer);
   setTimeout(function(){
     pintarFinal(true, 'MISIÓN COMPLETADA', 'SALA DESPEJADA',
       ['La puerta cede. Vega sale del archivo al pasillo principal de Helix Biolab.',
@@ -4145,7 +4317,7 @@ ui.win = function(){
        ['Modo', mode === 'timed' ? 'Normal' : 'Fácil'],
        ['Tiempo restante', mode === 'timed' ? U.mmss(timeLeft) : 'Sin límite'],
        ['Órdenes dadas', String(st.turns)],
-       ['Registro de acceso', 'Marca una entrada 11 min antes que la de Vega']]);
+       ['Última señal', 'Los fluorescentes se encendieron solos']]);
   }, 1400);
 };
 
@@ -4153,6 +4325,7 @@ ui.lose = function(motivo){
   if(st.finished) return;
   st.finished = true;
   clearInterval(timer);
+  clearInterval(idleTimer);
   pintarFinal(false, 'MISIÓN ABORTADA', 'OPERACIÓN FALLIDA',
     ['El ciclo de contención se completa. Los cierres magnéticos sellan la sala desde dentro.',
      'La imagen de la cámara 02 aguanta unos segundos más. Después, nada.',
@@ -4161,7 +4334,7 @@ ui.lose = function(motivo){
      ['Modo', mode === 'timed' ? 'Normal' : 'Fácil'],
      ['Tiempo restante', '00:00'],
      ['Órdenes dadas', String(st.turns)],
-     ['Canal con Vega', 'Cortado. Última imagen: CAM 02']]);
+     ['Última señal', 'El canal murió a media frase']]);
 };
 
 /* ---------- copiar registro ---------- */
@@ -4192,6 +4365,28 @@ function copiar(btn){
   }
 }
 
+/* ---------- vigía de inactividad ----------
+   Si Control pasa más de un minuto sin escribir nada, Vega lo nota.
+   Es tiempo real (Date.now), no turnos: por eso corre en su propio
+   intervalo y no depende del reloj del ciclo de contención (que en
+   modo fácil ni siquiera existe). */
+function startIdleWatch(){
+  clearInterval(idleTimer);
+  lastInputAt = Date.now();
+  idleWarned = false;
+  idleTimer = setInterval(function(){
+    if(!st || st.finished || st.awaiting) return;
+    if(!idleWarned && Date.now() - lastInputAt > 60000){
+      idleWarned = true;
+      LC.ui.line('vega', 'Control, ¿estás ahí?', '');
+    }
+  }, 5000);
+}
+function marcaInput(){
+  lastInputAt = Date.now();
+  idleWarned = false;
+}
+
 /* ---------- partida ---------- */
 function elegirModo(m){
   mode = m;
@@ -4210,9 +4405,14 @@ function nuevaPartida(){
   show('scr-game');
   ui.refresh();
   startTimer();
+  startIdleWatch();
   ui.line('sys', LC.room.introHora + ' — HELIX BIOLAB · canal abierto con la capitana Vega.');
   if(mode === 'dev') ui.line('sys', 'MODO FÁCIL: sin límite de tiempo.');
   ui.line('vega', LC.room.texts.apertura);
+  // Beat 2: en vez de soltar la primera pista directamente, Vega pregunta.
+  // La respuesta sí/no se resuelve en E.handleOne (st.aperturaPregunta).
+  ui.line('vega', '¿Quieres que te diga lo que hay en la habitación?', '', 1200);
+  st.aperturaPregunta = true;
   setTimeout(function(){ elInput.focus(); }, 300);
 }
 
@@ -4220,6 +4420,7 @@ function enviar(){
   const v = elInput.value.trim();
   if(!v || elSend.disabled) return;
   elInput.value = '';
+  marcaInput();
   E.handleCommand(st, v);
   elInput.focus();
 }
@@ -4270,7 +4471,9 @@ function fitViewport(){
   if(tecladoAbierto !== ultimoKb){
     ultimoKb = tecladoAbierto;
     app.classList.toggle('kb', tecladoAbierto);
-    if(elCam) elCam.classList.toggle('auto-mini', tecladoAbierto);
+    // con el teclado, la cámara se recoge del todo; si el desplegable
+    // estaba abierto y el teclado se cierra, se cierra con él
+    if(!tecladoAbierto) cerrarCamDesplegable();
     // al cambiar el reparto, lo revelado se queda revelado
     fijarRevelados('scr-game');
   }
@@ -4297,6 +4500,18 @@ function pintarDiag(h, off, kb){
   if(diagOn) el.textContent = ultimaDiag;
 }
 
+/* ---------- desplegable de cámara (con el teclado abierto) ---------- */
+function cerrarCamDesplegable(){
+  if(!elCamWrap || !elCamToggle) return;
+  elCamWrap.classList.remove('abierta');
+  elCamToggle.textContent = '▾ CÁMARA';
+}
+function toggleCamDesplegable(){
+  if(!elCamWrap || !elCamToggle) return;
+  const abierta = elCamWrap.classList.toggle('abierta');
+  elCamToggle.textContent = abierta ? '▴ CÁMARA' : '▾ CÁMARA';
+}
+
 /* ---------- arranque ---------- */
 /* ---------- marca: making enemies, antes de la portada ---------- */
 let brandAvanzado = false;
@@ -4312,6 +4527,7 @@ ui.boot = function(){
   elSend  = document.getElementById('send');
   elCam   = document.getElementById('cam');
   elCamWrap = document.getElementById('camwrap');
+  elCamToggle = document.getElementById('cam-toggle');
   elClock = document.getElementById('clock');
   elHud   = document.getElementById('chips');
   elAwait = document.getElementById('await');
@@ -4376,6 +4592,7 @@ ui.boot = function(){
     elCam.classList.toggle('mini');
     this.textContent = elCam.classList.contains('mini') ? 'CÁMARA GRANDE' : 'CÁMARA PEQUEÑA';
   });
+  elCamToggle.addEventListener('click', toggleCamDesplegable);
   document.getElementById('btn-reveal').addEventListener('click', function(){
     reveal = !reveal;
     this.textContent = reveal ? 'TEXTO: PROGRESIVO' : 'TEXTO: INSTANTÁNEO';
