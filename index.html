@@ -259,6 +259,12 @@
       var(--text) 12px 14px, transparent 14px 19px, var(--text) 19px 25px, transparent 25px 28px);
     opacity:.85;
   }
+  /* ── MARCADOR DE VERSIÓN DE PRUEBA — QUITAR ANTES DE LANZAR ── */
+  #build-version{
+    position:absolute;top:8px;right:10px;z-index:5;
+    font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;
+    color:var(--amber);opacity:.8;pointer-events:none;
+  }
   .pt-foot{
     display:flex;justify-content:space-between;
     font-size:11px;letter-spacing:3px;color:var(--green-dim);
@@ -718,6 +724,8 @@
 
   <!-- ══════ INICIO · PORTADA ══════ -->
   <section class="scr" id="scr-start">
+    <!-- MARCADOR DE VERSIÓN DE PRUEBA — borrar este div y su regla CSS antes de lanzar -->
+    <div id="build-version">v1</div>
     <div class="cinta izq"><span></span></div>
     <div class="cinta der"><span></span></div>
 
