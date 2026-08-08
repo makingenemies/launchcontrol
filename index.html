@@ -9,33 +9,30 @@
 <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Poppins:wght@700&display=swap" rel="stylesheet">
 <style>
   /* Paleta y tipografías originales del proyecto. No tocar sin acordarlo. */
-  /* PALETA: amarillo y azul apagados. Acabado mate, sin resplandores.
-     --green* conserva el nombre por compatibilidad, pero es el mostaza
-     de la estructura. Los nombres se renombrarán cuando el diseñador
-     cierre la paleta definitiva. */
-  /* PALETA PROVISIONAL: rojo de estructura + azul brillante de datos.
-     Los nombres --green* son históricos; ahora son el rojo. Se renombrarán
-     cuando el diseñador cierre la paleta definitiva.
-     La alarma comparte tono con la estructura, así que se distingue por
-     tratamiento: fondo teñido y borde grueso, no solo por color. */
+  /* PALETA: verde mate. Acabado apagado, sin resplandores de neón.
+     --green* conserva el nombre por compatibilidad histórica: ahora es
+     el verde oliva de la estructura, no un verde brillante.
+     La alarma comparte familia de color con la estructura (los dos son
+     tonos apagados de la misma gama), así que se distingue por
+     tratamiento —fondo teñido y borde izquierdo grueso—, no solo por color. */
   :root{
-    --green-hi:#8df0ff;   /* azul brillante: hitos */
-    --bg:#0b070d;
-    --panel:#170d14;
-    --panel2:#110810;
-    --green:#ff4d5e;      /* rojo: estructura */
-    --green-dim:#a85c68;  /* rojo apagado: bordes y etiquetas */
-    --amber:#5ad4f5;      /* azul brillante: dato, reloj, sistema */
-    --red:#ff8a95;        /* alarma */
-    --text:#dce9f2;       /* voz de Vega */
-    --azul:#79c8ff;       /* lo que escribe Control */
+    --green-hi:#c9d99a;   /* hitos: avance real del puzzle */
+    --bg:#12140f;
+    --panel:#181b14;
+    --panel2:#141710;
+    --green:#a3b76e;      /* estructura: marcos, cabeceras, rayas, etiqueta de Vega */
+    --green-dim:#575f3c;  /* bordes secundarios y etiquetas de tabla */
+    --amber:#d1ae72;      /* dato, reloj, mensajes del sistema */
+    --red:#c0757a;        /* alarma: Vega asustada */
+    --text:#cdd4c0;       /* voz de Vega */
+    --azul:#8fa3b5;       /* lo que escribe Control */
     --app-h:100dvh;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   /* Documento bloqueado: sin scroll de página, Safari no puede desplazar el layout */
   /* FONDO NEGRO. El body está en position:fixed, así que su fondo ya no se
      propaga al lienzo: hay que pintarlo también en html y en #app. */
-  html{background:#0b070d;}
+  html{background:#12140f;}
   html,body{
     margin:0;padding:0;
     width:100%;height:100%;
@@ -44,7 +41,7 @@
     overscroll-behavior:none;
   }
   body{
-    background:radial-gradient(ellipse at 50% -10%, #1b0f18 0%, var(--bg) 60%);
+    background:radial-gradient(ellipse at 50% -10%, #221c1a 0%, var(--bg) 60%);
     color:var(--text);
     font-family:'Share Tech Mono', monospace;
     font-size:15px;line-height:1.6;
@@ -64,7 +61,7 @@
      top compensa el desplazamiento que aplica Safari al abrir el teclado. */
   #app{
     position:fixed;left:0;right:0;top:0;height:var(--app-h);overflow:hidden;
-    background:radial-gradient(ellipse at 50% -10%, #1b0f18 0%, var(--bg) 60%);
+    background:radial-gradient(ellipse at 50% -10%, #221c1a 0%, var(--bg) 60%);
   }
   .scr{
     position:absolute;inset:0;display:none;flex-direction:column;
@@ -129,7 +126,7 @@
     font-size:11px;letter-spacing:1px;padding:7px 12px;border-radius:2px;
     background:transparent;border:1px solid var(--green-dim);color:var(--green-dim);
   }
-  .modes button.on{border-color:var(--amber);color:var(--amber);background:rgba(255,180,84,.08);}
+  .modes button.on{border-color:var(--amber);color:var(--amber);background:rgba(209,174,114,.08);}
 
 
 
@@ -173,8 +170,8 @@
   .info.portada{
     padding:0 46px 6px;justify-content:flex-start;
     background:
-      repeating-linear-gradient(90deg, rgba(168,92,104,.28) 0 1px, transparent 1px 36px),
-      repeating-linear-gradient(0deg,  rgba(168,92,104,.28) 0 1px, transparent 1px 36px);
+      repeating-linear-gradient(90deg, rgba(87,95,60,.28) 0 1px, transparent 1px 36px),
+      repeating-linear-gradient(0deg,  rgba(87,95,60,.28) 0 1px, transparent 1px 36px);
   }
 
   /* cintas laterales con texto en marcha */
@@ -239,7 +236,7 @@
 
     display:flex;justify-content:space-between;gap:10px;
     padding:7px 0;font-size:12.5px;
-    border-bottom:1px solid rgba(168,92,104,.45);
+    border-bottom:1px solid rgba(87,95,60,.45);
   }
 
   .pt-claim p{
@@ -296,7 +293,7 @@
   .tabla{border:1px solid var(--green-dim);margin:0 0 16px;}
   .tabla-cab{
     display:flex;align-items:center;gap:5px;
-    background:rgba(255,77,94,.1);
+    background:rgba(163,183,110,.1);
     border-bottom:1px solid var(--green-dim);
     padding:6px 10px;
     font-size:10.5px;letter-spacing:2.5px;color:var(--green);
@@ -309,14 +306,14 @@
 
   .tabla .fila{
     display:flex;gap:10px;padding:7px 10px;
-    border-bottom:1px solid rgba(77,107,44,.4);
+    border-bottom:1px solid rgba(87,95,60,.4);
     font-size:12.5px;line-height:1.45;
   }
   .tabla .fila:last-of-type{border-bottom:none;}
   .tabla .fila span{color:var(--green-dim);min-width:118px;flex:0 0 auto;letter-spacing:.5px;}
   .tabla .fila b{color:var(--text);font-weight:normal;}
   .tabla .fila.peligro b{color:var(--red);font-weight:bold;letter-spacing:1px;}
-  .tabla .fila.mensaje{background:rgba(255,95,95,.07);}
+  .tabla .fila.mensaje{background:rgba(192,117,122,.07);}
   .tabla .fila.mensaje b.cita{color:var(--red);font-weight:bold;letter-spacing:1px;}
   .tabla .fila.cmd span{
     min-width:14px;color:var(--green);font-weight:bold;
@@ -359,14 +356,14 @@
   .scrim{
     flex:1;display:flex;align-items:center;justify-content:center;
     padding:18px 14px calc(18px + env(safe-area-inset-bottom));
-    background:radial-gradient(ellipse at 50% 40%, rgba(255,77,94,.06), transparent 60%);
+    background:radial-gradient(ellipse at 50% 40%, rgba(163,183,110,.06), transparent 60%);
   }
   /* ---------- PANEL: el marco común de todo el juego ---------- */
   .panel{
     position:relative;padding-bottom:10px;
     background:var(--panel);
     border:1px solid var(--green);
-    box-shadow:0 0 0 1px rgba(255,77,94,.12), 0 8px 24px rgba(0,0,0,.5),
+    box-shadow:0 0 0 1px rgba(163,183,110,.12), 0 8px 24px rgba(0,0,0,.5),
                inset 0 0 34px rgba(0,0,0,.4);
     clip-path:polygon(0 14px, 14px 0, calc(100% - 14px) 0, 100% 14px,
                       100% calc(100% - 14px), calc(100% - 14px) 100%,
@@ -388,7 +385,7 @@
   .panel-body{padding:15px 15px 6px;}
   .panel-foot{
     padding:9px 15px 12px;font-size:11px;color:var(--green-dim);
-    border-top:1px solid rgba(77,107,44,.5);
+    border-top:1px solid rgba(87,95,60,.5);
   }
 
   .modal{width:100%;max-width:440px;}
@@ -430,7 +427,7 @@
     opacity:.5;
   }
   .opcion:hover::after,.opcion:active::after{opacity:.9;}
-  .opcion:hover,.opcion:active{background:rgba(255,77,94,.1);border-color:var(--green);}
+  .opcion:hover,.opcion:active{background:rgba(163,183,110,.1);border-color:var(--green);}
   .opcion .op-tag{
     position:absolute;top:0;right:0;
     background:var(--amber);color:#180a0f;
@@ -550,7 +547,7 @@
   /* La cámara lleva el mismo marco que el resto del juego */
   #camwrap{
     flex:0 1 auto;margin:9px 9px 0;
-    box-shadow:0 0 0 1px rgba(255,77,94,.12), inset 0 0 30px rgba(0,0,0,.6);
+    box-shadow:0 0 0 1px rgba(163,183,110,.12), inset 0 0 30px rgba(0,0,0,.6);
   }
   #cam{
     position:relative;overflow:hidden;
@@ -574,7 +571,7 @@
   #app.kb #camwrap{display:none;margin:0;}
   #app.kb #camwrap.abierta{
     display:flex;position:absolute;left:8px;right:8px;top:78px;z-index:35;
-    box-shadow:0 10px 28px rgba(0,0,0,.7), 0 0 0 1px rgba(255,77,94,.12);
+    box-shadow:0 10px 28px rgba(0,0,0,.7), 0 0 0 1px rgba(163,183,110,.12);
   }
   #app.kb #camwrap.abierta #cam{height:32vh;max-height:220px;min-height:120px;}
   #app.kb #hud{padding:4px 11px;}
@@ -600,7 +597,7 @@
   #diag{
     display:none;flex:0 0 auto;
     font-size:10.5px;line-height:1.5;color:var(--amber);
-    background:rgba(255,180,84,.08);border-bottom:1px solid var(--green-dim);
+    background:rgba(209,174,114,.08);border-bottom:1px solid var(--green-dim);
     padding:5px 10px;white-space:pre-wrap;
   }
   #diag.show{display:block;}
@@ -623,9 +620,18 @@
      dentro de .hl. El resto habla con el tono normal de Vega. */
   .msg.hito{border-left:2px solid var(--green-hi);padding-left:9px;}
   .msg .txt .hl{color:var(--green-hi);}
-  /* La alarma ya no se pinta de rojo (redundaba con el propio susto):
-     se distingue por esta anotación en cursiva, no por el color. */
-  .msg .txt i.aviso{font-style:italic;opacity:.75;color:var(--green-dim);}
+  /* La alarma no recolorea el texto de Vega (sigue con su tono normal) ni
+     lleva ya la anotación pegada dentro de su frase: eso ahora es un
+     mensaje de sistema aparte, en azul (ver .msg.sys .txt más abajo).
+     Lo que sí conserva es el tratamiento de caja —fondo teñido y borde
+     izquierdo grueso— porque en la paleta verde mate la alarma comparte
+     familia de color apagado con la estructura, y sin este tratamiento
+     no se distinguiría a simple vista. */
+  .msg.alarma{
+    border-left:3px solid var(--red);
+    background:rgba(192,117,122,.13);
+    padding:6px 9px 6px 9px;margin-left:-2px;
+  }
   .msg.sys .txt{color:var(--amber);font-size:13px;}
   .msg.sys .txt::before{content:"· ";}
 
@@ -670,7 +676,7 @@
   }
   #await{
     display:none;align-items:center;gap:8px;margin-bottom:7px;
-    border:1px solid var(--amber);background:rgba(255,180,84,.08);
+    border:1px solid var(--amber);background:rgba(209,174,114,.08);
     padding:6px 8px;border-radius:2px;
   }
   #await.show{display:flex;}
@@ -685,7 +691,7 @@
     font-family:'Share Tech Mono', monospace;font-size:16px;
     padding:12px 11px;border-radius:3px;min-width:0;
   }
-  #cmd:focus{outline:none;box-shadow:0 0 0 2px rgba(255,77,94,.25);}
+  #cmd:focus{outline:none;box-shadow:0 0 0 2px rgba(163,183,110,.25);}
   #send{
     background:var(--green);border:1px solid var(--green);color:#180a0f;
     font-weight:bold;font-size:13px;letter-spacing:2px;padding:0 15px;border-radius:3px;
@@ -1203,8 +1209,14 @@ E.DISENGAGE = ['dejalo','dejala','dejarlo','deja el','deja la','deja eso','deja 
 // Verbos que significan "escribe esto", no una orden nueva
 E.INPUT_VERBS = ['introduce','teclea','marca','escribe','dicta','pon '];
 
-E.AFFIRM = ['si','sí','hazlo','hazla','hazlo ya','adelante','venga','claro','dale','tira',
-            'procede','confirmado','afirmativo','por favor','eso','exacto','correcto','vamos'];
+E.AFFIRM = ['si','sí','sip','siii','simon','hazlo','hazla','hazlo ya','adelante','venga','claro',
+            'dale','tira','procede','confirmado','afirmativo','por favor','eso','exacto','correcto',
+            'vamos','ok','okay','vale','ya','desde luego'];
+
+// Formas de decir "sigo aquí" al vigía de inactividad, que no son un "sí" genérico
+E.AQUI_ESTOY = ['aqui estoy','aquí estoy','estoy aqui','estoy aquí','sigo aqui','sigo aquí',
+                'presente','aqui','aquí','todo bien','todo controlado','sigo despierta',
+                'no me he ido'];
 
 E.QUESTION_STARTS = ['hay ','que ','cual','cuanto','cuantos','cuantas','donde','quien','como ',
                      'ves ','notas ','se ve','tiene ','puedes '];
@@ -1267,7 +1279,8 @@ E.newState = function(room, mode){
     hintLevel: 0,
     justDisengaged: false,
     lastOrder: '',
-    aperturaPregunta: false  // "¿Quieres que te diga lo que hay en la habitación?"
+    idleCheck: false,      // Vega ha preguntado "¿estás ahí?" y espera confirmación
+    idleAskCount: 0        // veces que lo ha preguntado esta partida
   };
   room.initState(st);
   return st;
@@ -1285,13 +1298,18 @@ E.findAll = function(n){
   const ents = LC.room.entities;
   const found = [];
   for(const key in ents){
-    let best = 0;
+    let best = 0, pos = -1;
     for(const w of ents[key].words){
-      if(n.indexOf(w) !== -1 && w.length > best) best = w.length;
+      const i = n.indexOf(w);
+      if(i !== -1 && w.length > best){ best = w.length; pos = i; }
     }
-    if(best > 0) found.push({key:key, len:best});
+    if(best > 0) found.push({key:key, len:best, pos:pos});
   }
-  found.sort(function(a,b){ return b.len - a.len; });
+  // Primero el que aparece antes en la frase (el objeto real de la orden,
+  // no el que se cuela en una cláusula como "...que hay en el escritorio").
+  // A igualdad de posición, gana la coincidencia más larga (frase compuesta
+  // como "cajon del escritorio" sobre solo "cajon").
+  found.sort(function(a,b){ return (a.pos - b.pos) || (b.len - a.len); });
   return found;
 };
 
@@ -1501,8 +1519,9 @@ E.ofrecer = function(st, keys, texto){
   else E.extra(texto);
 };
 
-E.NEGATIVO = ['no','ahora no','dejalo','deja','luego','mas tarde','más tarde','todavia no',
-              'todavía no','espera','aun no','aún no','nada','paso','ahora mismo no'];
+E.NEGATIVO = ['no','nop','qué va','que va','para nada','ahora no','dejalo','deja','luego',
+              'mas tarde','más tarde','todavia no','todavía no','espera','aun no','aún no',
+              'nada','paso','ahora mismo no'];
 
 /* Resuelve la respuesta a un ofrecimiento. Devuelve true si la consumió. */
 E.resolverOferta = function(st, t, n){
@@ -1645,7 +1664,7 @@ E.buscar = function(st, key){
   }
 };
 
-E.describeRoom = function(st, onlyNew){
+E.describeRoom = function(st, onlyNew, introForzada){
   const room = LC.room;
   const lista = (onlyNew && room.roomOrderExtra)
     ? room.roomOrder.concat(room.roomOrderExtra)
@@ -1669,7 +1688,7 @@ E.describeRoom = function(st, onlyNew){
   });
   items.forEach(function(k){ st.mentioned[k] = true; });
 
-  const intro = onlyNew ? U.pick(room.texts.introExtra) : U.pick(room.texts.introSala);
+  const intro = introForzada || (onlyNew ? U.pick(room.texts.introExtra) : U.pick(room.texts.introSala));
   const cuerpo = (frases.length === 1)
     ? frases[0] + '.'
     : frases.slice(0,-1).join(', ') + ' y ' + frases[frases.length-1] + '.';
@@ -1763,23 +1782,22 @@ E.handleOne = function(st, t, isPart){
             .replace(/^vale\s+/,'')
             .replace(/^ahora\s+/,'');
 
-  // Pregunta inicial de la apertura: "¿Quieres que te diga lo que hay en
-  // la habitación?". Solo se consume si la respuesta es un sí/no claro;
-  // si el jugador ignora la pregunta y da una orden, esa orden sigue su
-  // curso normal en vez de quedar bloqueada esperando sí/no.
-  if(st.aperturaPregunta){
-    st.aperturaPregunta = false;
+  // "Control, ¿estás ahí?" del vigía de inactividad. Cualquier respuesta
+  // clara (sí o no, dicho de muchas formas) se consume aquí sin más; si
+  // el jugador ignora la pregunta y da una orden, esa orden sigue su
+  // curso normal en vez de quedar bloqueada esperando confirmación.
+  if(st.idleCheck){
+    st.idleCheck = false;
     const limpio = n.replace(/[¿?.,!¡]/g,'').trim();
-    if(U.hasWhole(limpio, E.NEGATIVO) || limpio === 'no'){
-      E.say('Perfecto, espero órdenes de qué hacer.');
+    if(U.hasWhole(limpio, E.AFFIRM) || U.hasWhole(limpio, E.AQUI_ESTOY)){
+      E.say(U.pick(['Sigo aquí, Control.', 'Aquí sigo, todo controlado.', 'Presente. ¿Qué hacemos?']));
       return;
     }
-    if(U.hasWhole(limpio, E.AFFIRM)){
-      E.describeRoom(st, false);
+    if(U.hasWhole(limpio, E.NEGATIVO)){
+      E.say('Pues sigo esperando, Control.');
       return;
     }
-    // Ni sí ni no: se deja caer y se procesa como orden normal, sin volver
-    // a preguntar.
+    // Ni sí ni no reconocible: se deja caer y se procesa como orden normal.
   }
 
   // "No, mira la silla" es una corrección, no una prohibición
@@ -2166,7 +2184,10 @@ E.checkIdle = function(st){
   const hints = LC.room.hints(st);
   if(!hints.length) return;
   const idx = Math.min(st.hintLevel, hints.length - 1);
-  E.say(hints[idx]);
+  // Con pausa y como mensaje aparte (E.extra salta el filtro anti-duplicado
+  // por objeto): así no se lee como si continuara la respuesta anterior,
+  // que puede ser sobre un objeto totalmente distinto.
+  E.extra(hints[idx], '', 1400);
   st.hintLevel++;
   st.lastProgressTurn = st.turns;
 };
@@ -2461,7 +2482,7 @@ room.entities = {
     looks:[
       function(st){
         if(!st.chairLifted)
-          return 'Hay una silla de oficina volcada de lado, con las ruedas al aire. ' +
+          return 'Es la típica silla de oficina, desgastada, y está volcada en el suelo. ' +
                  'De aquí se fue alguien corriendo.';
         return 'La silla está de pie, ' + sitioSilla(st) + '.' +
                (st.subida ? ' Y yo estoy subida encima.' : '');
@@ -3895,7 +3916,6 @@ let elChat, elInput, elSend, elCam, elCamWrap, elCamToggle, elClock, elHud, elAw
 let transcript = [];
 let lastInputAt = 0;
 let idleTimer = null;
-let idleWarned = false;
 
 /* ---------- cola de mensajes: da ritmo a la conversación ---------- */
 const queue = [];
@@ -4001,7 +4021,7 @@ function pintarFoto(cont, id, pie, alTerminar){
    ítems que Vega acaba de encontrar, el resto queda con el tono normal
    de conversación. Desacoplado del contenido: room1.js no necesita
    marcar nada, este diccionario reconoce los nombres por sí solo. */
-const HI_WORDS = ['tarjeta de empleado','papeleo suelto','post-it','código de la puerta',
+const HI_WORDS = ['tarjeta de empleado','post-it','código de la puerta',
                    'llave pequeña','papel doblado','INFORME_47','KRONOS'];
 function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -4016,19 +4036,17 @@ function resaltarItems(el, text){
   el.innerHTML = html;
 }
 
-/* El susto ya no tiñe el texto de rojo: se nota en esta anotación en
-   cursiva entre paréntesis, aparte de la frase de Vega. */
+/* El susto ya no tiñe el texto de rojo: en vez de una anotación pegada a
+   la frase de Vega, sale como un mensaje de sistema aparte, en azul,
+   igual que "Error: conexión perdida." */
 const AVISOS_TENSION = [
   'Atención: niveles de estrés del agente infiltrado incrementando',
   'Cuidado: ritmo cardiaco del agente en máximos',
   'Aviso: biomonitor del agente fuera de rango',
   'Alerta: constantes vitales del agente inestables'
 ];
-function anadirAviso(el){
-  const em = document.createElement('i');
-  em.className = 'aviso';
-  em.textContent = ' (' + U.pick(AVISOS_TENSION) + ')';
-  el.appendChild(em);
+function anadirAviso(){
+  ui.line('sys', U.pick(AVISOS_TENSION), '', 700);
 }
 
 function render(msg){
@@ -4059,13 +4077,13 @@ function render(msg){
   if(reveal && msg.who === 'vega'){
     escribir(t, msg.text, function(){
       if(msg.kind === 'hito') resaltarItems(t, msg.text);
-      if(msg.kind === 'alarma') anadirAviso(t);
+      if(msg.kind === 'alarma') anadirAviso();
       if(msg.alTerminar) msg.alTerminar();
     });
   } else {
     t.textContent = msg.text;
     if(msg.kind === 'hito') resaltarItems(t, msg.text);
-    if(msg.kind === 'alarma') anadirAviso(t);
+    if(msg.kind === 'alarma') anadirAviso();
     autoscroll();
     if(msg.alTerminar) msg.alTerminar();
   }
@@ -4374,25 +4392,37 @@ function copiar(btn){
 }
 
 /* ---------- vigía de inactividad ----------
-   Si Control pasa más de un minuto sin escribir nada, Vega lo nota.
-   Es tiempo real (Date.now), no turnos: por eso corre en su propio
-   intervalo y no depende del reloj del ciclo de contención (que en
-   modo fácil ni siquiera existe). */
+   Si Control pasa un rato sin escribir nada, Vega lo nota. Es tiempo real
+   (Date.now), no turnos. Escala: la primera vez al minuto 1 de silencio,
+   la segunda a los 2 minutos, la tercera a los 3... En modo con tiempo
+   deja de preguntar cuando quedan 5 min o menos, porque a partir de ahí
+   ya mete prisa la propia cuenta atrás. En modo fácil, sin reloj que
+   avise de nada, se limita a 3 veces para no ser pesada. */
+const IDLE_PREGUNTAS = [
+  'Control, ¿estás ahí?',
+  '¿Sigues ahí, Control?',
+  'Control, dame algo. Lo que sea.',
+  'Sigo esperando, Control. ¿Todo bien?',
+  '¿Me recibes, Control?'
+];
 function startIdleWatch(){
   clearInterval(idleTimer);
   lastInputAt = Date.now();
-  idleWarned = false;
   idleTimer = setInterval(function(){
     if(!st || st.finished || st.awaiting) return;
-    if(!idleWarned && Date.now() - lastInputAt > 60000){
-      idleWarned = true;
-      LC.ui.line('vega', 'Control, ¿estás ahí?', '');
+    if(mode === 'timed' && timeLeft <= 300) return;
+    if(mode !== 'timed' && st.idleAskCount >= 3) return;
+    const minutos = Math.floor((Date.now() - lastInputAt) / 60000);
+    if(minutos >= st.idleAskCount + 1){
+      st.idleAskCount++;
+      st.idleCheck = true;
+      const idx = Math.min(st.idleAskCount - 1, IDLE_PREGUNTAS.length - 1);
+      LC.ui.line('vega', IDLE_PREGUNTAS[idx], '');
     }
   }, 5000);
 }
 function marcaInput(){
   lastInputAt = Date.now();
-  idleWarned = false;
 }
 
 /* ---------- partida ---------- */
@@ -4410,6 +4440,10 @@ function nuevaPartida(){
   pumping = false;
   elChat.innerHTML = '';
   pegadoAbajo = true;
+  camaraYaColapso = false;
+  if(elCam) elCam.classList.remove('mini');
+  const btnCam = document.getElementById('btn-cam');
+  if(btnCam) btnCam.textContent = 'CÁMARA PEQUEÑA';
   show('scr-game');
   ui.refresh();
   startTimer();
@@ -4417,10 +4451,10 @@ function nuevaPartida(){
   ui.line('sys', LC.room.introHora + ' — HELIX BIOLAB · canal abierto con la capitana Vega.');
   if(mode === 'dev') ui.line('sys', 'MODO FÁCIL: sin límite de tiempo.');
   ui.line('vega', LC.room.texts.apertura);
-  // Beat 2: en vez de soltar la primera pista directamente, Vega pregunta.
-  // La respuesta sí/no se resuelve en E.handleOne (st.aperturaPregunta).
-  ui.line('vega', '¿Quieres que te diga lo que hay en la habitación?', '', 1200);
-  st.aperturaPregunta = true;
+  // Antes preguntaba "¿Quieres que te diga lo que hay en la habitación?".
+  // Una persona no pregunta eso: entra y cuenta dónde está. Vega hace lo
+  // mismo, con una pausa breve para que no se pise con la línea anterior.
+  setTimeout(function(){ E.describeRoom(st, false, 'Estoy en la Sala de Archivos. Veo '); }, 1200);
   setTimeout(function(){ elInput.focus(); }, 300);
 }
 
@@ -4449,6 +4483,7 @@ function enviar(){
    En vertical el teclado ocupa en torno al 40% de la pantalla. */
 
 let altoSinTeclado = 0;
+let camaraYaColapso = false;
 
 let ultimoAlto = -1, ultimoOff = -1, ultimoKb = null;
 
@@ -4479,9 +4514,21 @@ function fitViewport(){
   if(tecladoAbierto !== ultimoKb){
     ultimoKb = tecladoAbierto;
     app.classList.toggle('kb', tecladoAbierto);
-    // con el teclado, la cámara se recoge del todo; si el desplegable
-    // estaba abierto y el teclado se cierra, se cierra con él
-    if(!tecladoAbierto) cerrarCamDesplegable();
+    if(tecladoAbierto){
+      // primera vez que se abre el teclado en esta partida: a partir de
+      // ahora la cámara ya no vuelve a tamaño completo, se queda pequeña
+      // para dejar más sitio a la conversación
+      camaraYaColapso = true;
+    } else {
+      // con el teclado, la cámara se recoge del todo; si el desplegable
+      // estaba abierto y el teclado se cierra, se cierra con él
+      cerrarCamDesplegable();
+      if(camaraYaColapso && elCam && !elCam.classList.contains('mini')){
+        elCam.classList.add('mini');
+        const btnCam = document.getElementById('btn-cam');
+        if(btnCam) btnCam.textContent = 'CÁMARA GRANDE';
+      }
+    }
     // al cambiar el reparto, lo revelado se queda revelado
     fijarRevelados('scr-game');
   }
